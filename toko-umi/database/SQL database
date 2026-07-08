@@ -1,0 +1,97 @@
+-- ============================================
+-- SKRIP SQL UNTUK TOKO SAYUR UMI
+-- Copy-paste semua teks ini ke SQL Editor di Supabase
+-- ============================================
+
+-- 1. Tabel Users (Pengguna)
+CREATE TABLE users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL, -- nanti diisi bcrypt
+  role VARCHAR(10) DEFAULT 'kasir' CHECK (role IN ('admin', 'kasir')),
+  nama_lengkap VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. Tabel Suppliers (Pemasok)
+CREATE TABLE suppliers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  nama VARCHAR(100) NOT NULL,
+  kontak VARCHAR(20),
+  alamat TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 3. Tabel Products (Produk Sayur)
+CREATE TABLE products (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  nama VARCHAR(100) NOT NULL,
+  kategori VARCHAR(50),
+  satuan VARCHAR(10) CHECK (satuan IN ('kg', 'pcs', 'ikat')),
+  hpp DECIMAL(10,2) NOT NULL, -- Harga Pokok Penjualan
+  harga_jual DECIMAL(10,2) NOT NULL,
+  stok DECIMAL(10,2) DEFAULT 0,
+  stok_minimum DECIMAL(10,2) DEFAULT 1,
+  supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 4. Tabel Transactions (Transaksi Penjualan)
+CREATE TABLE transactions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) NOT NULL,
+  customer_name VARCHAR(100),
+  total_belanja DECIMAL(10,2) NOT NULL,
+  total_hpp DECIMAL(10,2) NOT NULL, -- buat hitung laba kotor
+  metode_bayar VARCHAR(10) CHECK (metode_bayar IN ('tunai', 'qris', 'hutang')) DEFAULT 'tunai',
+  status VARCHAR(10) DEFAULT 'selesai',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 5. Tabel Transaction Details (Detail Barang per Transaksi)
+CREATE TABLE transaction_details (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES products(id) NOT NULL,
+  qty DECIMAL(10,2) NOT NULL,
+  harga_satuan_jual DECIMAL(10,2) NOT NULL, -- harga jual saat transaksi (bisa berubah karena tawar)
+  hpp_satuan DECIMAL(10,2) NOT NULL, -- salinan HPP saat itu
+  subtotal DECIMAL(10,2) NOT NULL
+);
+
+-- 6. Tabel Debts (Hutang Pelanggan)
+CREATE TABLE debts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  customer_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  ktp_photo_url VARCHAR(255),
+  total_hutang DECIMAL(10,2) NOT NULL,
+  sisa_hutang DECIMAL(10,2) NOT NULL,
+  jatuh_tempo DATE,
+  status VARCHAR(15) DEFAULT 'belum_lunas' CHECK (status IN ('belum_lunas', 'lunas')),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 7. Tabel Expenses (Pengeluaran Harian)
+CREATE TABLE expenses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) NOT NULL,
+  kategori VARCHAR(20) CHECK (kategori IN ('sewa', 'listrik', 'plastik', 'transport', 'lainnya')),
+  nominal DECIMAL(10,2) NOT NULL,
+  deskripsi TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 8. Tabel Shift Logs (Catatan Shift Kerja)
+CREATE TABLE shift_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) NOT NULL,
+  shift_start TIMESTAMP DEFAULT NOW(),
+  shift_end TIMESTAMP,
+  total_penjualan_shift DECIMAL(10,2) DEFAULT 0,
+  cash_in_drawer DECIMAL(10,2) DEFAULT 0
+);
+
+-- ============================================
+-- AKHIR SCRIPT
+-- ============================================
